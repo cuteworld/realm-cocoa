@@ -27,10 +27,13 @@
 #import "RLMRealm_Private.hpp"
 #import "RLMResults_Private.h"
 #import "RLMSchema_Private.hpp"
+#import "RLMUtil.hpp"
 
 #import "object_store.hpp"
 #import "shared_realm.hpp"
 #import "schema.hpp"
+
+#import <realm/table.hpp>
 
 using namespace realm;
 
@@ -150,17 +153,10 @@ using namespace realm;
 }
 
 - (void)renamePropertyForClass:(NSString *)className oldName:(NSString *)oldName newName:(NSString *)newName {
-    realm::ObjectStore::rename_property(_realm.group, *_schema, className.UTF8String, oldName.UTF8String, newName.UTF8String);
-    ObjectSchema objectStoreSchema(_realm.group, className.UTF8String);
-    RLMObjectSchema *objectSchema = [RLMObjectSchema objectSchemaForObjectStoreSchema:objectStoreSchema];
-    NSMutableArray *mutableObjectSchemas = [NSMutableArray arrayWithArray:_realm.schema.objectSchema];
-    [mutableObjectSchemas replaceObjectAtIndex:[mutableObjectSchemas indexOfObject:_realm.schema[className]]
-                                    withObject:objectSchema];
-    objectSchema.realm = _realm;
-    _realm.schema.objectSchema = [mutableObjectSchemas copy];
-    for (RLMProperty *property in objectSchema.properties) {
-        property.column = objectStoreSchema.property_for_name(property.name.UTF8String)->table_column;
-    }
+    const char *objectType = className.UTF8String;
+    realm::ObjectStore::rename_property(_realm.group, *_schema, objectType, oldName.UTF8String, newName.UTF8String);
+
+    _realm.schema[className].properties = [RLMObjectSchema objectSchemaForObjectStoreSchema:*_schema->find(objectType)].properties;
 }
 
 @end
